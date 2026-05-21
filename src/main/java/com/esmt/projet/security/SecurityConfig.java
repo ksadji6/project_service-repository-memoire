@@ -1,9 +1,8 @@
-package com.esmt.projet.config;
+package com.esmt.projet.security;
 
-import org.springframework.cloud.util.ConditionalOnBootstrapEnabled;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -11,12 +10,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor // <--- CORRIGÉ : Nécessaire pour injecter automatiquement le filtre
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter; // <--- CORRIGÉ : Injection du filtre
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -28,18 +31,23 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        //seul le chef projet ou l'admin crée un projet
+                        // Documentation swagger
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/projects/v3/api-docs").permitAll()
+                        // Seul le chef projet ou l'admin crée un projet
                         .requestMatchers("/api/projects/create").hasAnyRole("CHEF_PROJET", "ADMIN")
-
+                        // Les autres routes concernant le projet
                         .requestMatchers("/api/projects/**").hasAnyRole("ADMIN", "PRESALES", "CHEF_PROJET", "INGENIEUR", "SUPERVISEUR")
-
+                        // Les autres routes concernant les taches
                         .requestMatchers("/api/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR")
+                        .requestMatchers("/api/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR","SUPERvISEUR")
+
 
                         .anyRequest().authenticated()
                 );
 
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
-
-
 }

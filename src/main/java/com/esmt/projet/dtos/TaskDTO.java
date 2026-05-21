@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class TaskRequestDTO {
+public class TaskDTO {
     private Long id;
     private String intitule;
     private TaskStatus statut;

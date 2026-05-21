@@ -1,4 +1,4 @@
-package com.esmt.projet.repositories;
+package com.esmt.projet.repositories.mongodb;
 
 import com.esmt.projet.entities.ProjectDocument;
 import org.springframework.data.mongodb.repository.MongoRepository;

@@ -1,4 +1,4 @@
-package com.esmt.projet.repositories;
+package com.esmt.projet.repositories.jpa;
 
 import com.esmt.projet.entities.Prerequis;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,8 +1,32 @@
 package com.esmt.projet.entities;
 
-import org.springframework.stereotype.Component;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Component
-class Task {
+import java.time.LocalDateTime;
+
+@Data
+@Entity
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "tasks")
+public class Task {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String Intitule;
+
+    @Enumerated(EnumType.STRING)
+    private TaskStatus statut;
+
+    private Long ingenieurId; //id de l'ingenieur affecté à la tâche
+    private LocalDateTime dateCreation;
+
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    private Project project;
+
 
 }
