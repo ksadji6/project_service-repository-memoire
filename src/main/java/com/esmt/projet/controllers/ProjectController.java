@@ -27,6 +27,14 @@ public class ProjectController {
     @Operation(summary = "Créer un nouveau projet", description = "Initialise un dossier de projet au statut PRE_PROJET. Accès réservé aux Administrateurs et Chefs de Projet.")
     public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
         try {
+            projectService.creerProjet(requestDTO);
+            return ResponseEntity.ok(Map.of("message", "Projet créé avec succès"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+    /*public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
+        try {
             // Le service fait le travail (Insert en BD + Mail)
             projectService.creerProjet(requestDTO);
 
@@ -37,7 +45,7 @@ public class ProjectController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
-    /*public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
+    public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
         try {
             // On exécute la logique
             ProjectResponseDTO savedProject = projectService.creerProjet(requestDTO);
