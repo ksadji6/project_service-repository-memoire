@@ -13,9 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/statistiques")
+@RequestMapping("/api/projects/statistiques")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") // pour que le front react puisse consommer l'API
 @Tag(name = "Statistiques & Décisionnel", description = "Moteur d'agrégation de données pour l'alimentation du Dashboard Front-End")
 public class StatistiqueController {
 

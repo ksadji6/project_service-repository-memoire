@@ -4,6 +4,7 @@ import com.esmt.projet.entities.ProjectCategory;
 import com.esmt.projet.entities.ProjectPhase;
 import com.esmt.projet.entities.ProjectStatus;
 import com.esmt.projet.entities.Task;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -27,6 +28,7 @@ public class ProjectResponseDTO {
     private Long chefProjetId;
     private Long SuperviseurId;
 
+    @JsonIgnoreProperties({"project"})
     private List<TaskDTO> tasks;
     private List<DocumentDTO> documents;
     private List<PrerequisDTO>  prerequis;

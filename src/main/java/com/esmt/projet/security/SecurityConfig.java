@@ -39,8 +39,8 @@ public class SecurityConfig {
                         // Les autres routes concernant le projet
                         .requestMatchers("/api/projects/**").hasAnyRole("ADMIN", "PRESALES", "CHEF_PROJET", "INGENIEUR", "SUPERVISEUR")
                         // Les autres routes concernant les taches
-                        .requestMatchers("/api/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR")
-                        .requestMatchers("/api/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR","SUPERvISEUR")
+                        .requestMatchers("/api/projects/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR")
+                        //.requestMatchers("/api/projects/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR","SUPERVISEUR")
 
 
                         .anyRequest().authenticated()

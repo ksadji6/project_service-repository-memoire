@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -23,9 +25,46 @@ public class ProjectController {
     @PostMapping("/create")
     @PreAuthorize("hasAnyRole('CHEF_PROJET', 'ADMIN')")
     @Operation(summary = "Créer un nouveau projet", description = "Initialise un dossier de projet au statut PRE_PROJET. Accès réservé aux Administrateurs et Chefs de Projet.")
-    public ResponseEntity<ProjectResponseDTO> createProject(@RequestBody ProjectRequestDTO requestDTO) {
-        ProjectResponseDTO responseDTO = projectService.creerProjet(requestDTO);
-        return new ResponseEntity<>(responseDTO, HttpStatus.CREATED);
+    public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
+        try {
+            // Le service fait le travail (Insert en BD + Mail)
+            projectService.creerProjet(requestDTO);
+
+            // On retourne un statut HTTP 201 sans essayer de convertir l'objet Java en JSON
+            // C'est ce qui évite la boucle infinie de sérialisation
+            return ResponseEntity.status(HttpStatus.CREATED).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+    /*public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
+        try {
+            // On exécute la logique
+            ProjectResponseDTO savedProject = projectService.creerProjet(requestDTO);
+
+            // On ne retourne pas l'objet complet, mais on s'assure de retourner un JSON simple
+            // L'id seul suffit au front pour rediriger
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", savedProject.getId(), "message", "Projet créé"));
+        } catch (Exception e) {
+            // Ici tu verras le VRAI message d'erreur si ça plante
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }*/
+    //rechercher un projet à travers son id
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET', 'PRESALES', 'INGENIEUR', 'SUPERVISEUR')")
+    @Operation(summary = "Récupérer un projet par son ID", description = "Retourne le ProjectResponseDTO complet avec ses tâches et ses documents")
+    public ResponseEntity<ProjectResponseDTO> getProjectById(@PathVariable Long id) {
+        return ResponseEntity.ok(projectService.rechercherProjectById(id));
+    }
+
+    // recuperer tous les projets de la bdd
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET', 'PRESALES', 'INGENIEUR', 'SUPERVISEUR')")
+    @Operation(summary = "Récupérer tous les projets", description = "Retourne la liste complète de tous les projets de la base de données.")
+    public ResponseEntity<java.util.List<ProjectResponseDTO>> getAllProjects() {
+        return ResponseEntity.ok(projectService.rechercherTousLesProjets());
     }
 
     //valider prerequis et laner le projet : PRE_PROJET==>PROJET

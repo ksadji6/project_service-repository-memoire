@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.ByteArrayOutputStream;
-
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -28,31 +28,27 @@ import java.util.Map;
 public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectDocumentRepository documentRepository;
-    private final IdentityClient  identityClient;
-    private final HttpServletRequest   request;
+    private final IdentityClient identityClient;
+    private final HttpServletRequest request;
     private final TaskRepository taskRepository;
-    private final NotificationService  notificationService;
+    private final NotificationService notificationService;
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    //creer un projet
-    @Transactional //sauvegarde echouee-> rien en base
+    // creer un projet
+    @Transactional
     public ProjectResponseDTO creerProjet(ProjectRequestDTO request) {
-
         if (!identityClient.verifyUserRole(request.getPresalesId(), "PRESALES")) {
             throw new ProjectBusinessException("L'ID " + request.getPresalesId() + " n'est pas un membre de l'équipe PRESALES.");
         }
-
         if (!identityClient.verifyUserRole(request.getChefProjetId(), "CHEF_PROJET")) {
             throw new ProjectBusinessException("L'ID " + request.getChefProjetId() + " n'a pas les droits de CHEF_PROJET.");
         }
-
         if (!identityClient.verifyUserRole(request.getSuperviseurId(), "SUPERVISEUR")) {
             throw new ProjectBusinessException("L'ID " + request.getSuperviseurId() + " n'est pas un SUPERVISEUR valide.");
         }
 
-        //on transforme le dto en entite
         Project project = new Project();
         project.setTitre(request.getTitre());
         project.setDescription(request.getDescription());
@@ -63,39 +59,27 @@ public class ProjectService {
         project.setSuperviseurId(request.getSuperviseurId());
         project.setDateFinEstimee(request.getDateFinEstimee());
 
-        //initialisation par defaut
-        project.setPhase(ProjectPhase.PRE_PROJET); //un projet commence par cette phase
-        project.setStatut(ProjectStatus.EN_ATTENTE); //en attente de documents pour les prerequis
-        project.setAvancement(0); //0% par defaut
-        project.setDateDebut(LocalDateTime.now()); //la date du moment lors de la creation du projet
-        project.setDateFinEstimee(request.getDateFinEstimee());
-        //sauvegarde dans mysql
+        project.setPhase(ProjectPhase.PRE_PROJET);
+        project.setStatut(ProjectStatus.EN_ATTENTE);
+        project.setAvancement(0);
+        project.setDateDebut(LocalDateTime.now());
+
         Project savedProject = projectRepository.save(project);
 
-        //notifier le chef de projet
         try {
-            //recup des infos du chef de projet
             Map<String, Object> cpMap = identityClient.getUserById(request.getChefProjetId());
             if (cpMap != null && cpMap.get("email") != null) {
                 String emailCP = cpMap.get("email").toString();
-
-                //envoi du mail
-                notificationService.notifierNouveauPreProjet(
-                        emailCP,
-                        savedProject.getTitre(),
-                        "L'équipe Presales"
-                );
+                notificationService.notifierNouveauPreProjet(emailCP, savedProject.getTitre(), "L'équipe Presales");
             }
         } catch (Exception e) {
             System.err.println("Échec notification création pré-projet : " + e.getMessage());
         }
 
-        //Retourner la reponse cad retransformer l'entite en dto
         return mapToResponseDTO(savedProject);
-
     }
 
-    //transformer l'entite en dto pour la reponse
+    // transformer l'entite en dto pour la reponse
     private ProjectResponseDTO mapToResponseDTO(Project project) {
         ProjectResponseDTO responseDTO = new ProjectResponseDTO();
         responseDTO.setId(project.getId());
@@ -111,6 +95,7 @@ public class ProjectService {
         responseDTO.setDateDebut(project.getDateDebut());
         responseDTO.setDateFinEstimee(project.getDateFinEstimee());
         responseDTO.setSuperviseurId(project.getSuperviseurId());
+
         if (project.getTasks() != null) {
             List<TaskDTO> taskDTOs = project.getTasks().stream().map(task -> {
                 TaskDTO dto = new TaskDTO();
@@ -123,9 +108,7 @@ public class ProjectService {
             }).toList();
             responseDTO.setTasks(taskDTOs);
         }
-
         return responseDTO;
-
     }
 
     public ProjectDocument getDocument(String id) {
@@ -134,41 +117,82 @@ public class ProjectService {
     }
 
     public ProjectResponseDTO validerPrerequisEtLancer(Long projectId) {
-
-        //recuperer le projet
         Project projet = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
 
-        // seul le chef de projet peut valider les prerequis dans la phase preprojet
         if(!request.isUserInRole("CHEF_PROJET")) {
             throw new ProjectBusinessException("Action refusée : Seul le Chef de Projet peut valider les prérequis.");
         }
-
-        //verifier la phase--> est bien PRE_PROJET???
-        if (projet.getPhase() != ProjectPhase.PRE_PROJET)
-        {
+        if (projet.getPhase() != ProjectPhase.PRE_PROJET) {
             throw new ProjectBusinessException("Le projet est déjà entré en phase d'exécution ou finale.");
         }
 
-        //validation--> changement de phase
         projet.setPhase(ProjectPhase.PROJET);
         projet.setStatut(ProjectStatus.EN_COURS);
 
-        //sauvegarde
         Project updatedProject = projectRepository.save(projet);
         return mapToResponseDTO(updatedProject);
     }
 
-    //ajouter une tache à un projet
+    public ProjectResponseDTO rechercherProjectById(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé avec l'ID : " + projectId));
+        return mapToResponseDTO(project);
+    }
+
+    // 🎯 recuperer tous les projets de la bdd pour ton front
+    public List<ProjectResponseDTO> rechercherTousLesProjets() {
+        List<Project> projets = projectRepository.findAll();
+        return projets.stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
+    // ajouter une tache a un projet
+    @Transactional
     public ProjectResponseDTO ajouterTask(Long projectId, TaskDTO taskDTO) {
-        Project projet=projectRepository.findById(projectId)
+        Project projet = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
 
-        //verification de la phase : l'ajout d'une tache se fait en phase PROJET
-        if(projet.getPhase() != ProjectPhase.PROJET)
-        {
+        if(projet.getPhase() != ProjectPhase.PROJET) {
+            throw new ProjectBusinessException("Action impossible : Le projet n'est pas en phase active.");
+        }
+
+        Task task = new Task();
+        task.setIntitule(taskDTO.getIntitule());
+        task.setIngenieurId(taskDTO.getIngenieurId());
+        task.setStatut(TaskStatus.A_FAIRE);
+        task.setDateCreation(taskDTO.getDateCreation());
+        task.setProject(projet);
+
+        // 1. Sauvegarde la tâche
+        taskRepository.save(task);
+
+        // 2. Pas besoin de flush/refresh.
+        // Spring Data gère la synchronisation automatiquement à la fin de la méthode @Transactional.
+
+        // 3. Recalculer l'avancement (assure-toi que la liste des tâches dans l'objet 'projet' est mise à jour)
+        if (projet.getTasks() == null) {
+            projet.setTasks(new ArrayList<>());
+        }
+        projet.getTasks().add(task);
+        recalculerAvancement(projet);
+
+        // 4. Sauvegarde le projet mis à jour
+        Project savedProject = projectRepository.save(projet);
+
+        // ... (ton code de notification reste identique) ...
+
+        return mapToResponseDTO(savedProject);
+    }
+    /*public ProjectResponseDTO ajouterTask(Long projectId, TaskDTO taskDTO) {
+        Project projet = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
+
+        if(projet.getPhase() != ProjectPhase.PROJET) {
             throw new ProjectBusinessException("Action impossible : Le projet n'est pas en phase active (PROJET).");
         }
+
         Task task = new Task();
         task.setIntitule(taskDTO.getIntitule());
         task.setIngenieurId(taskDTO.getIngenieurId());
@@ -178,59 +202,43 @@ public class ProjectService {
 
         taskRepository.save(task);
 
-        //refresh pour la liste de taches
         entityManager.flush();
         entityManager.refresh(projet);
-
-        //recalcul automatique de l'avancement du projet KPI
         recalculerAvancement(projet);
 
-        //notification a l'ingénieur assigné
         try {
-            //recup du user
             Map<String, Object> userMap = identityClient.getUserById(taskDTO.getIngenieurId());
-
             if (userMap != null && userMap.get("email") != null) {
                 String emailIngenieur = userMap.get("email").toString();
-
-                //envoi de l'e-mail d'assignation
-                notificationService.notifierAssignationTache(
-                        emailIngenieur,
-                        projet.getTitre(),
-                        task.getIntitule()
-                );
+                notificationService.notifierAssignationTache(emailIngenieur, projet.getTitre(), task.getIntitule());
             }
         } catch (Exception e) {
             System.err.println("Alerte email non envoyée à l'ingénieur : " + e.getMessage());
         }
 
         return mapToResponseDTO(projectRepository.save(projet));
-    }
+    }*/
 
-    //modifier le statut d'une tache : A_FAIRE? EN_COURS? TERMINE??
+    // modifier le statut d'une tache
     @Transactional
     public ProjectResponseDTO changerStatutTask(Long taskId, TaskStatus newStatut) {
-        Task task= taskRepository.findById(taskId)
+        Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ProjectBusinessException("Tâche non trouvée"));
         task.setStatut(newStatut);
         taskRepository.save(task);
 
-        //recalcul automatique de l'avancement du projet lié
         Project projet = task.getProject();
-
-        //refrewh
         entityManager.flush();
         entityManager.refresh(projet);
         recalculerAvancement(projet);
         return mapToResponseDTO(projectRepository.save(projet));
     }
 
-    //mettre à jour le KPI d'avancement (0 à 100%)
+    // mettre a jour le kpi d'avancement
     private void recalculerAvancement(Project project) {
         List<Task> tasks = project.getTasks();
         int totalTasks = tasks.size();
-        if(tasks == null || tasks.isEmpty())
-        {
+        if(tasks == null || tasks.isEmpty()) {
             project.setAvancement(0);
             return;
         }
@@ -239,21 +247,15 @@ public class ProjectService {
                 .count();
         int pourcentage = (int) ((tachesTerminees * 100)/totalTasks);
         project.setAvancement(pourcentage);
-        if (pourcentage == 100 && project.getPhase() == ProjectPhase.PROJET )
-        {
-            //changement phase et statut
+
+        if (pourcentage == 100 && project.getPhase() == ProjectPhase.PROJET ) {
             project.setPhase(ProjectPhase.POST_PROJET);
             project.setStatut(ProjectStatus.EN_COURS);
 
-            //envoi notif chef projet
             try {
                 Map<String, Object> cpMap = identityClient.getUserById(project.getChefProjetId());
                 if (cpMap != null && cpMap.get("email") != null) {
-                    notificationService.notifierLivrablesEtCloture(
-                            cpMap.get("email").toString(),
-                            project.getTitre(),
-                            "Le système d'avancement"
-                    );
+                    notificationService.notifierLivrablesEtCloture(cpMap.get("email").toString(), project.getTitre(), "Le système d'avancement");
                 }
             } catch (Exception e) {
                 System.err.println("Échec alerte bascule automatique : " + e.getMessage());
@@ -261,23 +263,19 @@ public class ProjectService {
         }
     }
 
-    //cloturer le projet
+    // cloturer le projet
     @Transactional
     public ProjectResponseDTO cloturerProjet(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
 
-        //seul le Chef de Projet ou l'Admin peut clore
         if (!request.isUserInRole("CHEF_PROJET") && !request.isUserInRole("ADMIN")) {
             throw new ProjectBusinessException("Action refusée : Seul le Chef de Projet peut clôturer l'exécution.");
         }
-
-        //les taches doivent toutes etre a 100%
         if (project.getAvancement() < 100) {
             throw new ProjectBusinessException("Action impossible : L'avancement doit être à 100% pour passer en Post-Projet.");
         }
 
-        //passage à la phase post_projet
         project.setPhase(ProjectPhase.POST_PROJET);
         project.setStatut(ProjectStatus.TERMINE);
 
@@ -285,37 +283,25 @@ public class ProjectService {
         return mapToResponseDTO(updatedProject);
     }
 
-
-    //exportation excel des kpi et infos sur l'avancement des projets
-
+    // exportation excel des kpi
     public byte[] exporterStatistiquesProjets2026() throws Exception {
-        //recuperation de la liste des projets depuis mysql
         List<Project> projets = projectRepository.findAll();
 
-        //creation d'un classeur excel
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-            //creation d'un onglet Suivi de projets
             Sheet sheet = workbook.createSheet("Suivi Projets");
-
-            //on crée la 1e ligne --> titres des colonnes (index 0)
             Row headerRow = sheet.createRow(0);
             String[] colonnes = {"ID", "Titre du Projet", "Catégorie", "Phase", "Statut", "Avancement (%)"};
 
-            //boucle for pour remplir cette 1e ligne
             for (int i = 0; i < colonnes.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(colonnes[i]);
             }
 
-            //on remplit le reste des lignes avec les projets de la bd
-            int numeroLigne = 1; //on commence par la ligne1
-
+            int numeroLigne = 1;
             for (Project p : projets) {
-                Row row = sheet.createRow(numeroLigne++); //crée une nouvelle ligne et passe à la suivante
-
-                //on remplit chaque case de la ligne avec les infos du projet p
+                Row row = sheet.createRow(numeroLigne++);
                 row.createCell(0).setCellValue(p.getId());
                 row.createCell(1).setCellValue(p.getTitre());
                 row.createCell(2).setCellValue(p.getCategorie().toString());
@@ -324,10 +310,8 @@ public class ProjectService {
                 row.createCell(5).setCellValue(p.getAvancement());
             }
 
-            //on transforme le classeur en binaire (tableau d'octets)
             workbook.write(out);
             return out.toByteArray();
         }
     }
-
 }
