@@ -191,39 +191,7 @@ public class ProjectService {
 
         return mapToResponseDTO(savedProject);
     }
-    /*public ProjectResponseDTO ajouterTask(Long projectId, TaskDTO taskDTO) {
-        Project projet = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
 
-        if(projet.getPhase() != ProjectPhase.PROJET) {
-            throw new ProjectBusinessException("Action impossible : Le projet n'est pas en phase active (PROJET).");
-        }
-
-        Task task = new Task();
-        task.setIntitule(taskDTO.getIntitule());
-        task.setIngenieurId(taskDTO.getIngenieurId());
-        task.setStatut(TaskStatus.A_FAIRE);
-        task.setDateCreation(taskDTO.getDateCreation());
-        task.setProject(projet);
-
-        taskRepository.save(task);
-
-        entityManager.flush();
-        entityManager.refresh(projet);
-        recalculerAvancement(projet);
-
-        try {
-            Map<String, Object> userMap = identityClient.getUserById(taskDTO.getIngenieurId());
-            if (userMap != null && userMap.get("email") != null) {
-                String emailIngenieur = userMap.get("email").toString();
-                notificationService.notifierAssignationTache(emailIngenieur, projet.getTitre(), task.getIntitule());
-            }
-        } catch (Exception e) {
-            System.err.println("Alerte email non envoyée à l'ingénieur : " + e.getMessage());
-        }
-
-        return mapToResponseDTO(projectRepository.save(projet));
-    }*/
 
     // modifier le statut d'une tache
     @Transactional
@@ -238,6 +206,38 @@ public class ProjectService {
         entityManager.refresh(projet);
         recalculerAvancement(projet);
         return mapToResponseDTO(projectRepository.save(projet));
+    }
+
+    // Avoir la liste des taches dun ingénieur avec details
+    public List<TaskDTO> getTachesWithDetails(Long ingenieurId) {
+        return taskRepository.findByIngenieurId(ingenieurId).stream().map(task -> {
+            TaskDTO dto = new TaskDTO();
+            dto.setId(task.getId());
+            dto.setIntitule(task.getIntitule());
+            dto.setStatut(task.getStatut());
+
+            if (task.getProject() != null) {
+                Project p = task.getProject();
+                dto.setProjectTitle(p.getTitre());
+                dto.setDelais(p.getDateFinEstimee());
+                if (p.getChefProjetId() != null) {
+                    try {
+                        Map<String, Object> user = identityClient.getUserById(p.getChefProjetId());
+                        String nom = (String) user.getOrDefault("nom", "Inconnu");
+                        String prenom = (String) user.getOrDefault("prenom", "");
+                        dto.setChefProjetNom(prenom + " " + nom);
+                    } catch (Exception e) {
+                        dto.setChefProjetNom("Chef (ID: " + p.getChefProjetId() + ")");
+                    }
+                } else {
+                    dto.setChefProjetNom("Non assigné");
+                }
+            } else {
+                dto.setProjectTitle("Sans Projet");
+            }
+
+            return dto;
+        }).toList();
     }
 
     // mettre a jour le kpi d'avancement

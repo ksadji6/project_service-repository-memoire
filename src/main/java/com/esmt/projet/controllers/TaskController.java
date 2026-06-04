@@ -51,7 +51,7 @@ public class TaskController {
 
     //modifier le statut d'une tache et recalculer autoomatiquement l'avancement
     @PutMapping("/{taskId}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET')")
+    @PreAuthorize("hasAnyRole('ADMIN','INGENIEUR')")
     @Operation(summary = "Modifier le statut d'une tâche", description = "Bascule l'état (A_FAIRE, EN_COURS, TERMINE) d'une tâche et déclenche automatiquement le recalcul de l'avancement global du projet parent.")
     public ResponseEntity<ProjectResponseDTO> updateTaskStatus(@PathVariable Long taskId,
                                                                @RequestParam TaskStatus status)
@@ -61,9 +61,11 @@ public class TaskController {
 
 
     @GetMapping("/ingenieur/{ingenieurId}")
-    public ResponseEntity<List<Task>> getTachesByIngenieur(@PathVariable Long ingenieurId) {
-        return ResponseEntity.ok(projectService.findByIngenieurId(ingenieurId));
+    public ResponseEntity<List<TaskDTO>> getTachesByIngenieur(@PathVariable Long ingenieurId) {
+        return ResponseEntity.ok(projectService.getTachesWithDetails(ingenieurId));
     }
+
+
 
 
 

@@ -23,6 +23,15 @@ public class JwtUtils {
         String forceSecret = "CIS_2026_Key_CIS_2026_Key_CIS_2026_Key_";
         return Keys.hmacShaKeyFor(forceSecret.getBytes());
     }
+    public boolean getFirstLoginFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        // On récupère le flag, par défaut à false s'il n'existe pas
+        return claims.get("firstLogin", Boolean.class) != null && claims.get("firstLogin", Boolean.class);
+    }
 
     public String getEmailFromToken(String token) {
         return Jwts.parserBuilder()

@@ -31,6 +31,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
 
             if (jwtUtils.validateToken(token)) {
+                boolean isFirstLogin = jwtUtils.getFirstLoginFromToken(token);
+                String requestPath = request.getRequestURI();
+                //Si première connexion ET on ne va pas vers la page de changement de mdp
+                if (isFirstLogin && !requestPath.contains("/update-password")) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\": \"Vous devez changer votre mot de passe temporaire.\"}");
+                    return; // On arrête tout, l'utilisateur ne peut pas accéder aux services
+                }
+                // Sinon, on continue
                 String email = jwtUtils.getEmailFromToken(token);
                 String role = jwtUtils.getRoleFromToken(token);
                 String springRole = "ROLE_" + role;

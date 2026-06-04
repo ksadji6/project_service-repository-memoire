@@ -13,4 +13,7 @@ public class TaskDTO {
     private Long ingenieurId; //qui fait la tache
     private LocalDateTime dateCreation;
     private LocalDateTime delais;
+    private Long chefProjetId;
+    private String projectTitle;
+    private String chefProjetNom;
 }
