@@ -148,6 +148,12 @@ public class ProjectService {
                 .toList();
     }
 
+    //lister les taches d'un ingenieur
+    public List<Task> findByIngenieurId(Long ingenieurId) {
+        // En supposant que tu as un repository nommé taskRepository
+        return taskRepository.findByIngenieurId(ingenieurId);
+    }
+
     // ajouter une tache a un projet
     @Transactional
     public ProjectResponseDTO ajouterTask(Long projectId, TaskDTO taskDTO) {

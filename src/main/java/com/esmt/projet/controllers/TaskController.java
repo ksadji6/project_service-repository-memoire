@@ -2,6 +2,7 @@ package com.esmt.projet.controllers;
 
 import com.esmt.projet.dtos.ProjectResponseDTO;
 import com.esmt.projet.dtos.TaskDTO;
+import com.esmt.projet.entities.Task;
 import com.esmt.projet.entities.TaskStatus;
 import com.esmt.projet.services.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -55,6 +57,12 @@ public class TaskController {
                                                                @RequestParam TaskStatus status)
     {
         return ResponseEntity.ok(projectService.changerStatutTask(taskId, status));
+    }
+
+
+    @GetMapping("/ingenieur/{ingenieurId}")
+    public ResponseEntity<List<Task>> getTachesByIngenieur(@PathVariable Long ingenieurId) {
+        return ResponseEntity.ok(projectService.findByIngenieurId(ingenieurId));
     }
 
 
