@@ -6,6 +6,7 @@ import com.esmt.projet.dtos.ProjectResponseDTO;
 import com.esmt.projet.dtos.TaskDTO;
 import com.esmt.projet.entities.*;
 import com.esmt.projet.exceptions.ProjectBusinessException;
+import com.esmt.projet.repositories.jpa.PrerequisRepository;
 import com.esmt.projet.repositories.mongodb.ProjectDocumentRepository;
 import com.esmt.projet.repositories.jpa.ProjectRepository;
 import com.esmt.projet.repositories.jpa.TaskRepository;
@@ -14,6 +15,8 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -31,6 +34,7 @@ public class ProjectService {
     private final IdentityClient identityClient;
     private final HttpServletRequest request;
     private final TaskRepository taskRepository;
+    private final PrerequisRepository prerequisRepository;
     private final NotificationService notificationService;
 
     @PersistenceContext
@@ -39,10 +43,22 @@ public class ProjectService {
     // creer un projet
     @Transactional
     public ProjectResponseDTO creerProjet(ProjectRequestDTO request) {
+
+        System.out.println("DEBUG : IDs reçus -> Presales: " + request.getPresalesId() +
+                ", Chef: " + request.getChefProjetId() +
+                ", Superviseur: " + request.getSuperviseurId());
+
+        Long chefId = request.getChefProjetId();
+
+        // Si l'un est nul, on arrête tout
+        if (request.getPresalesId() == null || chefId == null || request.getSuperviseurId() == null) {
+            throw new ProjectBusinessException("Erreur : Des IDs sont manquants (Presales: " + request.getPresalesId() +
+                    ", Chef: " + chefId + ", Super: " + request.getSuperviseurId() + ")");
+        }
         if (!identityClient.verifyUserRole(request.getPresalesId(), "PRESALES")) {
             throw new ProjectBusinessException("L'ID " + request.getPresalesId() + " n'est pas un membre de l'équipe PRESALES.");
         }
-        if (!identityClient.verifyUserRole(request.getChefProjetId(), "CHEF_PROJET")) {
+        if (!identityClient.verifyUserRole(chefId, "CHEF_PROJET")) {
             throw new ProjectBusinessException("L'ID " + request.getChefProjetId() + " n'a pas les droits de CHEF_PROJET.");
         }
         if (!identityClient.verifyUserRole(request.getSuperviseurId(), "SUPERVISEUR")) {
@@ -55,7 +71,7 @@ public class ProjectService {
         project.setCategorie(request.getCategorie());
         project.setBudget(request.getBudget());
         project.setPresalesId(request.getPresalesId());
-        project.setChefProjetId(request.getChefProjetId());
+        project.setChefProjetId(chefId);
         project.setSuperviseurId(request.getSuperviseurId());
         project.setDateFinEstimee(request.getDateFinEstimee());
 
@@ -120,11 +136,28 @@ public class ProjectService {
         Project projet = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
 
-        if(!request.isUserInRole("CHEF_PROJET")) {
+        // Vérification propre du rôle via le contexte de sécurité
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isChefProjet = auth.getAuthorities().stream()
+                .anyMatch(r -> r.getAuthority().equals("ROLE_CHEF_PROJET"));
+
+        if (!isChefProjet) {
             throw new ProjectBusinessException("Action refusée : Seul le Chef de Projet peut valider les prérequis.");
         }
+
         if (projet.getPhase() != ProjectPhase.PRE_PROJET) {
             throw new ProjectBusinessException("Le projet est déjà entré en phase d'exécution ou finale.");
+        }
+
+        // Sécurité : Vérifier si la liste n'est pas vide pour éviter de lancer un projet vide
+        if (projet.getPrerequis() == null || projet.getPrerequis().isEmpty()) {
+            throw new ProjectBusinessException("Impossible de lancer un projet sans prérequis définis.");
+        }
+
+        boolean tousValides = projet.getPrerequis().stream().allMatch(Prerequis::isEstDisponible);
+
+        if (!tousValides) {
+            throw new ProjectBusinessException("Lancement impossible : tous les prérequis ne sont pas validés.");
         }
 
         projet.setPhase(ProjectPhase.PROJET);
@@ -133,6 +166,44 @@ public class ProjectService {
         Project updatedProject = projectRepository.save(projet);
         return mapToResponseDTO(updatedProject);
     }
+
+    public void togglePrerequisStatus(Long projectId, Long prerequisId) {
+        // 1. On vérifie que le prérequis appartient bien au projet (sécurité métier)
+        Prerequis p = prerequisRepository.findById(prerequisId)
+                .orElseThrow(() -> new RuntimeException("Prérequis non trouvé"));
+
+        if (!p.getProject().getId().equals(projectId)) {
+            throw new RuntimeException("Incohérence : Ce prérequis n'appartient pas à ce projet.");
+        }
+
+        // 2. On inverse l'état (true devient false, false devient true)
+        p.setEstDisponible(!p.isEstDisponible());
+
+        // 3. On sauvegarde
+        prerequisRepository.save(p);
+    }
+
+    /*public ProjectResponseDTO validerPrerequisEtLancer(Long projectId) {
+        Project projet = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
+
+        if(!request.isUserInRole("CHEF_PROJET")) {
+            throw new ProjectBusinessException("Action refusée : Seul le Chef de Projet peut valider les prérequis.");
+        }
+        if (projet.getPhase() != ProjectPhase.PRE_PROJET) {
+            throw new ProjectBusinessException("Le projet est déjà entré en phase d'exécution ou finale.");
+        }
+        boolean tousValides = projet.getPrerequis().stream().allMatch(Prerequis::isEstDisponible);
+
+        if (!tousValides) {
+            throw new ProjectBusinessException("Lancement impossible : tous les prérequis ne sont pas validés.");
+        }
+        projet.setPhase(ProjectPhase.PROJET);
+        projet.setStatut(ProjectStatus.EN_COURS);
+
+        Project updatedProject = projectRepository.save(projet);
+        return mapToResponseDTO(updatedProject);
+    }*/
 
     public ProjectResponseDTO rechercherProjectById(Long projectId) {
         Project project = projectRepository.findById(projectId)

@@ -75,6 +75,15 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.rechercherTousLesProjets());
     }
 
+    @PutMapping("/{projectId}/prerequis/{prerequisId}/toggle")
+    @PreAuthorize("hasAnyRole('CHEF_PROJET', 'ADMIN')")
+    @Operation(summary = "Basculer l'état d'un prérequis")
+    public ResponseEntity<?> togglePrerequis(@PathVariable Long projectId, @PathVariable Long prerequisId) {
+        // On délègue la logique au service
+        projectService.togglePrerequisStatus(projectId, prerequisId);
+        return ResponseEntity.ok(Map.of("message", "Prérequis mis à jour avec succès"));
+    }
+
     //valider prerequis et laner le projet : PRE_PROJET==>PROJET
     @PutMapping("/{projectId}/lancer")
     @PreAuthorize("hasAnyRole('CHEF_PROJET','ADMIN')")
@@ -83,6 +92,8 @@ public class ProjectController {
         ProjectResponseDTO response=projectService.validerPrerequisEtLancer(projectId);
         return ResponseEntity.ok(response);
     }
+
+
 
     //clôturer définitivement le projet
     @PutMapping("/{projectId}/cloturer")
