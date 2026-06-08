@@ -24,6 +24,7 @@ public class Task {
 
     private Long ingenieurId; //id de l'ingenieur affecté à la tâche
     private LocalDateTime dateCreation;
+    private LocalDateTime dateFin;
 
     @ManyToOne
     @JoinColumn(name = "project_id")

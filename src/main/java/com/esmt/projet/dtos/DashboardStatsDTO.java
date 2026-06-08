@@ -15,11 +15,14 @@ public class DashboardStatsDTO {
     // 3. Les Graphiques Techniques
     private Map<String, Integer> avancementParProjet;
     private Map<String, Map<String, Long>> chargeTravailParIngenieur;
+    private Map<String, Long> tendanceAvancement;
+
+
 
     // Constructeurt
     public DashboardStatsDTO(long totalProjets, long projetsBloques, double avancementMoyenGlobal,
                              Map<String, Long> repartitionParCategorie, Map<String, Long> projetsParPhase,
-                             Map<String, Integer> avancementParProjet, Map<String, Map<String, Long>> chargeTravailParIngenieur) {
+                             Map<String, Integer> avancementParProjet, Map<String, Map<String, Long>> chargeTravailParIngenieur,Map<String, Long> tendanceAvancement) {
         this.totalProjets = totalProjets;
         this.projetsBloques = projetsBloques;
         this.avancementMoyenGlobal = avancementMoyenGlobal;
@@ -27,6 +30,7 @@ public class DashboardStatsDTO {
         this.projetsParPhase = projetsParPhase;
         this.avancementParProjet = avancementParProjet;
         this.chargeTravailParIngenieur = chargeTravailParIngenieur;
+        this.tendanceAvancement = tendanceAvancement;
     }
 
     // Getters et Setters
@@ -50,4 +54,7 @@ public class DashboardStatsDTO {
 
     public Map<String, Map<String, Long>> getChargeTravailParIngenieur() { return chargeTravailParIngenieur; }
     public void setChargeTravailParIngenieur(Map<String, Map<String, Long>> chargeTravailParIngenieur) { this.chargeTravailParIngenieur = chargeTravailParIngenieur; }
+
+    public Map<String, Long> getTendanceAvancement() {return tendanceAvancement;}
+    public void setTendanceAvancement(Map<String, Long> tendanceAvancement) {this.tendanceAvancement = tendanceAvancement;}
 }

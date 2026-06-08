@@ -76,9 +76,21 @@ public class StatistiqueService {
                 }
             }
         }
+        Map<String, Long> tendance = genererTendanceAvancement();
 
         // On retourne le DTO
         return new DashboardStatsDTO(totalProjets, projetsBloques, avancementMoyenGlobal,
-                repartitionParCategorie, projetsParPhase, avancementParProjet, chargeTravailParIngenieur);
+                repartitionParCategorie, projetsParPhase, avancementParProjet, chargeTravailParIngenieur, tendance);
+    }
+    // Dans StatistiqueService.java
+    public Map<String, Long> genererTendanceAvancement() {
+        return projectRepository.findAll().stream()
+                .flatMap(p -> p.getTasks().stream())
+                .filter(t -> t.getStatut() == TaskStatus.TERMINE && t.getDateCreation() != null)
+                .collect(Collectors.groupingBy(
+                        t -> t.getDateCreation().toLocalDate().toString(),
+                        TreeMap::new,
+                        Collectors.counting()
+                ));
     }
 }

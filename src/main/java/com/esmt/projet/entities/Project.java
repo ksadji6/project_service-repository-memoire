@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -44,10 +46,12 @@ public class Project {
 
     //Liste des tâches --> phase projet
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
+    @BatchSize(size = 30)
     private List<Task> tasks;
 
     //checklist des prérequis pour passer de Préprojet à Projet --> validation du chef_projet
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
+    @BatchSize(size = 30)
     private List<Prerequis> prerequis;
 
 

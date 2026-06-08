@@ -240,6 +240,7 @@ public class ProjectService {
         task.setIngenieurId(taskDTO.getIngenieurId());
         task.setStatut(TaskStatus.A_FAIRE);
         task.setDateCreation(taskDTO.getDateCreation());
+        task.setDateFin(taskDTO.getDateFin());
         task.setProject(projet);
 
         // 1. Sauvegarde la tâche
@@ -290,7 +291,7 @@ public class ProjectService {
             if (task.getProject() != null) {
                 Project p = task.getProject();
                 dto.setProjectTitle(p.getTitre());
-                dto.setDelais(p.getDateFinEstimee());
+                dto.setDateFin(p.getDateFinEstimee());
                 if (p.getChefProjetId() != null) {
                     try {
                         Map<String, Object> user = identityClient.getUserById(p.getChefProjetId());
@@ -390,5 +391,50 @@ public class ProjectService {
             workbook.write(out);
             return out.toByteArray();
         }
+    }
+    // Pour TaskManager : Lister les tâches d'un projet
+    public List<TaskDTO> getTachesByProjet(Long projectId) {
+        Project projet = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
+
+        return projet.getTasks().stream().map(task -> {
+            TaskDTO dto = new TaskDTO();
+            dto.setId(task.getId());
+            dto.setIntitule(task.getIntitule()); // Attention à ton nom de champ DTO
+            dto.setStatut(task.getStatut());
+            dto.setIngenieurId(task.getIngenieurId());
+            dto.setDateCreation(task.getDateCreation());
+            dto.setDateFin(task.getDateFin());
+            return dto;
+        }).toList();
+    }
+
+    // Pour TaskManager : Modifier une tâche
+    @Transactional
+    public TaskDTO modifierTask(Long taskId, TaskDTO taskDTO) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ProjectBusinessException("Tâche non trouvée"));
+
+        task.setIntitule(taskDTO.getIntitule());
+        task.setIngenieurId(taskDTO.getIngenieurId());
+        task.setStatut(taskDTO.getStatut());
+        task.setDateFin(taskDTO.getDateFin());
+
+
+        Task saved = taskRepository.save(task);
+        // Recalcul avancement projet parent
+        recalculerAvancement(task.getProject());
+        taskDTO.setId(saved.getId());
+        return taskDTO;
+    }
+
+    // Pour TaskManager : Supprimer une tâche
+    @Transactional
+    public void supprimerTask(Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ProjectBusinessException("Tâche non trouvée"));
+        Project projet = task.getProject();
+        taskRepository.delete(task);
+        recalculerAvancement(projet);
     }
 }

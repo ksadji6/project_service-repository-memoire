@@ -51,7 +51,7 @@ public class TaskController {
 
     //modifier le statut d'une tache et recalculer autoomatiquement l'avancement
     @PutMapping("/{taskId}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','INGENIEUR')")
+    @PreAuthorize("hasAnyRole('ADMIN','INGENIEUR', 'CHEF_PROJET')")
     @Operation(summary = "Modifier le statut d'une tâche", description = "Bascule l'état (A_FAIRE, EN_COURS, TERMINE) d'une tâche et déclenche automatiquement le recalcul de l'avancement global du projet parent.")
     public ResponseEntity<ProjectResponseDTO> updateTaskStatus(@PathVariable Long taskId,
                                                                @RequestParam TaskStatus status)
@@ -65,6 +65,30 @@ public class TaskController {
         return ResponseEntity.ok(projectService.getTachesWithDetails(ingenieurId));
     }
 
+    //récupérer les tâches d'un projet spécifique
+    @GetMapping("/project/{projectId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET', 'INGENIEUR', 'SUPERVISEUR')")
+    @Operation(summary = "Lister les tâches d'un projet")
+    public ResponseEntity<List<TaskDTO>> getTasksByProject(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getTachesByProjet(projectId));
+    }
+
+    //modifier une tâche existante (titre, description, assignation)
+    @PutMapping("/{taskId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET')")
+    @Operation(summary = "Mettre à jour une tâche")
+    public ResponseEntity<TaskDTO> updateTask(@PathVariable Long taskId, @RequestBody TaskDTO taskDTO) {
+        return ResponseEntity.ok(projectService.modifierTask(taskId, taskDTO));
+    }
+
+    //supprimer une tâche
+    @DeleteMapping("/{taskId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET')")
+    @Operation(summary = "Supprimer une tâche")
+    public ResponseEntity<Void> deleteTask(@PathVariable Long taskId) {
+        projectService.supprimerTask(taskId);
+        return ResponseEntity.noContent().build();
+    }
 
 
 
