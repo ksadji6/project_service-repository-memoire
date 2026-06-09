@@ -16,4 +16,6 @@ public interface IdentityClient {
     @GetMapping("/id/{id}")
     Map<String, Object> getUserById(@PathVariable("id") Long id);
 
+
+
 }

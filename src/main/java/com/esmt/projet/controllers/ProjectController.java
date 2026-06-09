@@ -1,5 +1,6 @@
 package com.esmt.projet.controllers;
 
+import com.esmt.projet.client.IdentityClient;
 import com.esmt.projet.dtos.ProjectRequestDTO;
 import com.esmt.projet.dtos.ProjectResponseDTO;
 import com.esmt.projet.services.ProjectService;
@@ -13,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,6 +24,7 @@ import java.util.Map;
 @Tag(name = "Projets", description = "Gestion du cycle de vie des projets (Création, Lancement, Clôture et Exports)")
 public class ProjectController {
     private final ProjectService projectService;
+    private final IdentityClient identityClient;
     //creer un projet
     @PostMapping("/create")
     @PreAuthorize("hasAnyRole('CHEF_PROJET', 'ADMIN')")
@@ -121,6 +125,21 @@ public class ProjectController {
                 // On injecte le fichier dans le corps de la réponse
                 .body(fichierExcel);
     }
+
+    @GetMapping("/mes-projets/{idChef}")
+    public ResponseEntity<List<ProjectResponseDTO>> getMesProjets(@PathVariable Long idChef) {
+        // Ici, pas besoin d'appeler IdentityClient pour convertir l'email
+        return ResponseEntity.ok(projectService.findByChefProjetId(idChef));
+    }
+
+    @GetMapping("/ingenieur/{ingenieurId}")
+    @PreAuthorize("hasRole('INGENIEUR')")
+    public ResponseEntity<List<ProjectResponseDTO>> getProjetsParIngenieur(@PathVariable Long ingenieurId) {
+        // Il faudra créer cette méthode dans ProjectService
+        return ResponseEntity.ok(projectService.findProjectsByIngenieurId(ingenieurId));
+    }
+
+
 
 
 }

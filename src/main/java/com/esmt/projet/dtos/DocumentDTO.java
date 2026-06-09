@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class DocumentDTO {
-    private Long id;
+    private String id;
     private String fileName;
     private DocumentType type;
     private LocalDateTime uploadDate;

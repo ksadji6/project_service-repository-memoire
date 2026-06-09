@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -287,11 +288,12 @@ public class ProjectService {
             dto.setId(task.getId());
             dto.setIntitule(task.getIntitule());
             dto.setStatut(task.getStatut());
+            dto.setDateCreation(task.getDateCreation()); // Ajoute cette ligne
+            dto.setDateFin(task.getDateFin());
 
             if (task.getProject() != null) {
                 Project p = task.getProject();
                 dto.setProjectTitle(p.getTitre());
-                dto.setDateFin(p.getDateFinEstimee());
                 if (p.getChefProjetId() != null) {
                     try {
                         Map<String, Object> user = identityClient.getUserById(p.getChefProjetId());
@@ -437,4 +439,30 @@ public class ProjectService {
         taskRepository.delete(task);
         recalculerAvancement(projet);
     }
+
+    public List<ProjectResponseDTO> findByChefProjetId(Long chefProjetId) {
+        return projectRepository.findByChefProjetId(chefProjetId).stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public ProjectResponseDTO getProjectByIdForUser(Long projectId, Long userId, String role) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
+
+        // Si c'est un Chef de Projet, on vérifie qu'il est bien le propriétaire
+        if ("CHEF_PROJET".equals(role) && !project.getChefProjetId().equals(userId)) {
+            throw new ProjectBusinessException("Accès refusé : Ce projet ne vous appartient pas.");
+        }
+
+        return mapToResponseDTO(project);
+    }
+
+    public List<ProjectResponseDTO> findProjectsByIngenieurId(Long ingenieurId) {
+        // Retourne les projets où l'ingénieur a au moins une tâche assignée
+        return projectRepository.findProjectsByIngenieurId(ingenieurId).stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
 }
