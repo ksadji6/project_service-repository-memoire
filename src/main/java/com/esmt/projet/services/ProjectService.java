@@ -1,6 +1,7 @@
 package com.esmt.projet.services;
 
 import com.esmt.projet.client.IdentityClient;
+import com.esmt.projet.dtos.PrerequisDTO;
 import com.esmt.projet.dtos.ProjectRequestDTO;
 import com.esmt.projet.dtos.ProjectResponseDTO;
 import com.esmt.projet.dtos.TaskDTO;
@@ -96,6 +97,24 @@ public class ProjectService {
         return mapToResponseDTO(savedProject);
     }
 
+    // update le statut d'un projet
+    public ProjectResponseDTO updateStatut(Long projectId, ProjectStatus nouveauStatut, String commentaire) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projet introuvable"));
+
+        project.setStatut(nouveauStatut);
+
+        // Si on met en BLOQUE, on enregistre le motif
+        if (nouveauStatut == ProjectStatus.BLOQUE) {
+            project.setCommentaireBloquant(commentaire);
+        } else {
+            project.setCommentaireBloquant(null); // On efface le commentaire si le projet n'est plus bloqué
+        }
+
+        Project saved = projectRepository.save(project);
+        return mapToResponseDTO(saved);
+    }
+
     // transformer l'entite en dto pour la reponse
     private ProjectResponseDTO mapToResponseDTO(Project project) {
         ProjectResponseDTO responseDTO = new ProjectResponseDTO();
@@ -112,6 +131,10 @@ public class ProjectService {
         responseDTO.setDateDebut(project.getDateDebut());
         responseDTO.setDateFinEstimee(project.getDateFinEstimee());
         responseDTO.setSuperviseurId(project.getSuperviseurId());
+        responseDTO.setCommentaireBloquant(project.getCommentaireBloquant());
+        responseDTO.setPrerequis(project.getPrerequis().stream()
+                .map(p -> new PrerequisDTO(p.getId(), p.getLibelle(), p.isEstDisponible()))
+                .collect(Collectors.toList()));
 
         if (project.getTasks() != null) {
             List<TaskDTO> taskDTOs = project.getTasks().stream().map(task -> {
@@ -121,6 +144,7 @@ public class ProjectService {
                 dto.setStatut(task.getStatut());
                 dto.setIngenieurId(task.getIngenieurId());
                 dto.setDateCreation(task.getDateCreation());
+
                 return dto;
             }).toList();
             responseDTO.setTasks(taskDTOs);
@@ -168,6 +192,13 @@ public class ProjectService {
         return mapToResponseDTO(updatedProject);
     }
 
+    public void supprimerProjet(Long id) {
+        if (!projectRepository.existsById(id)) {
+            throw new RuntimeException("Projet introuvable");
+        }
+        projectRepository.deleteById(id);
+    }
+
     public void togglePrerequisStatus(Long projectId, Long prerequisId) {
         // 1. On vérifie que le prérequis appartient bien au projet (sécurité métier)
         Prerequis p = prerequisRepository.findById(prerequisId)
@@ -184,35 +215,13 @@ public class ProjectService {
         prerequisRepository.save(p);
     }
 
-    /*public ProjectResponseDTO validerPrerequisEtLancer(Long projectId) {
-        Project projet = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé"));
-
-        if(!request.isUserInRole("CHEF_PROJET")) {
-            throw new ProjectBusinessException("Action refusée : Seul le Chef de Projet peut valider les prérequis.");
-        }
-        if (projet.getPhase() != ProjectPhase.PRE_PROJET) {
-            throw new ProjectBusinessException("Le projet est déjà entré en phase d'exécution ou finale.");
-        }
-        boolean tousValides = projet.getPrerequis().stream().allMatch(Prerequis::isEstDisponible);
-
-        if (!tousValides) {
-            throw new ProjectBusinessException("Lancement impossible : tous les prérequis ne sont pas validés.");
-        }
-        projet.setPhase(ProjectPhase.PROJET);
-        projet.setStatut(ProjectStatus.EN_COURS);
-
-        Project updatedProject = projectRepository.save(projet);
-        return mapToResponseDTO(updatedProject);
-    }*/
-
     public ProjectResponseDTO rechercherProjectById(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectBusinessException("Projet non trouvé avec l'ID : " + projectId));
         return mapToResponseDTO(project);
     }
 
-    // 🎯 recuperer tous les projets de la bdd pour ton front
+    //recuperer tous les projets de la bdd pour ton front
     public List<ProjectResponseDTO> rechercherTousLesProjets() {
         List<Project> projets = projectRepository.findAll();
         return projets.stream()
@@ -328,19 +337,6 @@ public class ProjectService {
         int pourcentage = (int) ((tachesTerminees * 100)/totalTasks);
         project.setAvancement(pourcentage);
 
-        if (pourcentage == 100 && project.getPhase() == ProjectPhase.PROJET ) {
-            project.setPhase(ProjectPhase.POST_PROJET);
-            project.setStatut(ProjectStatus.EN_COURS);
-
-            try {
-                Map<String, Object> cpMap = identityClient.getUserById(project.getChefProjetId());
-                if (cpMap != null && cpMap.get("email") != null) {
-                    notificationService.notifierLivrablesEtCloture(cpMap.get("email").toString(), project.getTitre(), "Le système d'avancement");
-                }
-            } catch (Exception e) {
-                System.err.println("Échec alerte bascule automatique : " + e.getMessage());
-            }
-        }
     }
 
     // cloturer le projet

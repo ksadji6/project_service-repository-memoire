@@ -55,18 +55,7 @@ public class ProjectDocumentController {
                     .contentLength(document.getData().length) // On donne la taille exacte
                     .body(document.getData());
         }
-        /*public ResponseEntity<byte[]> downloadDocument(@PathVariable String documentId) {
-            // On récupère l'objet complet depuis la BD via le service
-            ProjectDocument document = documentService.getDocument(documentId);
 
-            return ResponseEntity.ok()
-                    // On définit le header pour que le navigateur comprenne que c'est un fichier
-                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + document.getFileName() + "\"")
-                    // On définit le type MIME (PDF, Image, etc.)
-                    .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
-                    .body(document.getData());// On renvoie les octets (byte[])
-        }*/
 
         @DeleteMapping("/delete/{documentId}")
         @PreAuthorize("hasAnyRole('ADMIN', 'PRESALES', 'INGENIEUR')")

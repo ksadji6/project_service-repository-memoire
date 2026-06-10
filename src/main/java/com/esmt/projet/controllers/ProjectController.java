@@ -1,8 +1,14 @@
 package com.esmt.projet.controllers;
 
 import com.esmt.projet.client.IdentityClient;
+import com.esmt.projet.dtos.PrerequisDTO;
 import com.esmt.projet.dtos.ProjectRequestDTO;
 import com.esmt.projet.dtos.ProjectResponseDTO;
+import com.esmt.projet.entities.Prerequis;
+import com.esmt.projet.entities.Project;
+import com.esmt.projet.entities.ProjectStatus;
+import com.esmt.projet.repositories.jpa.PrerequisRepository;
+import com.esmt.projet.repositories.jpa.ProjectRepository;
 import com.esmt.projet.services.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +31,8 @@ import java.util.Map;
 public class ProjectController {
     private final ProjectService projectService;
     private final IdentityClient identityClient;
+    private final ProjectRepository projectRepository;
+    private final PrerequisRepository prerequisRepository;
     //creer un projet
     @PostMapping("/create")
     @PreAuthorize("hasAnyRole('CHEF_PROJET', 'ADMIN')")
@@ -37,32 +45,7 @@ public class ProjectController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
-    /*public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
-        try {
-            // Le service fait le travail (Insert en BD + Mail)
-            projectService.creerProjet(requestDTO);
 
-            // On retourne un statut HTTP 201 sans essayer de convertir l'objet Java en JSON
-            // C'est ce qui évite la boucle infinie de sérialisation
-            return ResponseEntity.status(HttpStatus.CREATED).build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
-    }
-    public ResponseEntity<?> createProject(@RequestBody ProjectRequestDTO requestDTO) {
-        try {
-            // On exécute la logique
-            ProjectResponseDTO savedProject = projectService.creerProjet(requestDTO);
-
-            // On ne retourne pas l'objet complet, mais on s'assure de retourner un JSON simple
-            // L'id seul suffit au front pour rediriger
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", savedProject.getId(), "message", "Projet créé"));
-        } catch (Exception e) {
-            // Ici tu verras le VRAI message d'erreur si ça plante
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
-    }*/
     //rechercher un projet à travers son id
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET', 'PRESALES', 'INGENIEUR', 'SUPERVISEUR')")
@@ -79,14 +62,7 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.rechercherTousLesProjets());
     }
 
-    @PutMapping("/{projectId}/prerequis/{prerequisId}/toggle")
-    @PreAuthorize("hasAnyRole('CHEF_PROJET', 'ADMIN')")
-    @Operation(summary = "Basculer l'état d'un prérequis")
-    public ResponseEntity<?> togglePrerequis(@PathVariable Long projectId, @PathVariable Long prerequisId) {
-        // On délègue la logique au service
-        projectService.togglePrerequisStatus(projectId, prerequisId);
-        return ResponseEntity.ok(Map.of("message", "Prérequis mis à jour avec succès"));
-    }
+
 
     //valider prerequis et laner le projet : PRE_PROJET==>PROJET
     @PutMapping("/{projectId}/lancer")
@@ -138,6 +114,59 @@ public class ProjectController {
         // Il faudra créer cette méthode dans ProjectService
         return ResponseEntity.ok(projectService.findProjectsByIngenieurId(ingenieurId));
     }
+
+    @PutMapping("/{projectId}/statut")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET')")
+    public ResponseEntity<ProjectResponseDTO> updateStatut(
+            @PathVariable Long projectId,
+            @RequestParam ProjectStatus statut,
+            @RequestParam(required = false) String commentaire) {
+
+        return ResponseEntity.ok(projectService.updateStatut(projectId, statut, commentaire));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PROJET')")
+    @Operation(summary = "Supprimer un projet", description = "Supprime définitivement un projet de la base de données.")
+    public ResponseEntity<?> deleteProject(@PathVariable Long id) {
+        try {
+            projectService.supprimerProjet(id);
+            return ResponseEntity.ok(Map.of("message", "Projet supprimé avec succès"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+    @PostMapping("/{projectId}/prerequis")
+    @PreAuthorize("hasAnyRole('PRESALES', 'ADMIN', 'CHEF_PROJET')")
+    public ResponseEntity<PrerequisDTO> addPrerequis(@PathVariable Long projectId, @RequestBody PrerequisDTO dto) {
+        Project projet = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+
+        Prerequis p = new Prerequis();
+        p.setLibelle(dto.getLibelle());
+        p.setEstDisponible(false);
+        p.setProject(projet);
+
+        // 2. Sauvegarde (retourne l'entité avec ID généré)
+        Prerequis saved = prerequisRepository.save(p);
+
+        // 3. Conversion explicite en DTO avant de retourner
+        PrerequisDTO responseDTO = new PrerequisDTO();
+        responseDTO.setId(saved.getId());
+        responseDTO.setLibelle(saved.getLibelle());
+        responseDTO.setEstDisponible(saved.isEstDisponible());
+
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @PutMapping("/{projectId}/prerequis/{prerequisId}/toggle")
+    @PreAuthorize("hasAnyRole('CHEF_PROJET', 'ADMIN')")
+    @Operation(summary = "Basculer l'état d'un prérequis")
+    public ResponseEntity<?> togglePrerequis(@PathVariable Long projectId, @PathVariable Long prerequisId) {
+        projectService.togglePrerequisStatus(projectId, prerequisId);
+        return ResponseEntity.ok(Map.of("message", "État mis à jour avec succès"));
+    }
+
 
 
 

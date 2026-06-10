@@ -2,7 +2,6 @@ package com.esmt.projet.controllers;
 
 import com.esmt.projet.dtos.ProjectResponseDTO;
 import com.esmt.projet.dtos.TaskDTO;
-import com.esmt.projet.entities.Task;
 import com.esmt.projet.entities.TaskStatus;
 import com.esmt.projet.services.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,12 +41,6 @@ public class TaskController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    /*public ProjectResponseDTO createTask(@PathVariable Long projectId,
-                                                         @RequestBody TaskDTO taskDTO)
-    {
-        System.out.println("DEBUG: Appel reçu pour projet ID = " + projectId);
-        return projectService.ajouterTask(projectId,taskDTO);
-    }*/
 
     //modifier le statut d'une tache et recalculer autoomatiquement l'avancement
     @PutMapping("/{taskId}/status")

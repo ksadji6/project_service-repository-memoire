@@ -2,7 +2,6 @@ package com.esmt.projet.dtos;
 
 import com.esmt.projet.entities.ProjectCategory;
 import lombok.Data;
-import org.springframework.boot.convert.DataSizeUnit;
 
 import java.time.LocalDateTime;
 
@@ -16,4 +15,5 @@ public class ProjectRequestDTO {
     private Long superviseurId;
     private Double budget;
     private LocalDateTime dateFinEstimee;
+
 }

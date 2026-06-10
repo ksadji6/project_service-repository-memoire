@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/projects/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR")
                         //.requestMatchers("/api/projects/tasks/**").hasAnyRole("ADMIN", "CHEF_PROJET", "INGENIEUR","SUPERVISEUR")
                         .requestMatchers("/api/projects/tasks/ingenieur/**").hasAnyRole( "ADMIN", "INGENIEUR")
+                        .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "CHEF_PROJET", "SUPERVISEUR","PRESALES","INGENIEUR")
 
                         .anyRequest().authenticated()
                 );
