@@ -15,9 +15,7 @@ public class JwtUtils {
     @Value("${jwt.secret:CIS_2026_Secure_Key_Super_Secret_Esmt_M2_Security}")
     private String jwtSecret;
 
-    /*private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
-    }*/
+
     private Key getSigningKey() {
         // La même chaîne exacte de 32 caractères
         String forceSecret = "CIS_2026_Key_CIS_2026_Key_CIS_2026_Key_";

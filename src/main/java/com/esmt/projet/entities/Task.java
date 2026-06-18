@@ -17,7 +17,7 @@ public class Task {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String Intitule;
+    private String intitule;
 
     @Enumerated(EnumType.STRING)
     private TaskStatus statut;

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -52,7 +53,7 @@ public class Project {
     //checklist des prérequis pour passer de Préprojet à Projet --> validation du chef_projet
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
     @BatchSize(size = 30)
-    private List<Prerequis> prerequis;
+    private List<Prerequis> prerequis= new ArrayList<>();;
 
 
 }

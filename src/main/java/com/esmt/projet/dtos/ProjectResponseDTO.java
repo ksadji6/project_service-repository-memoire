@@ -26,7 +26,7 @@ public class ProjectResponseDTO {
 
     private Long presalesId;
     private Long chefProjetId;
-    private Long SuperviseurId;
+    private Long superviseurId;
 
     @JsonIgnoreProperties({"project"})
     private List<TaskDTO> tasks;

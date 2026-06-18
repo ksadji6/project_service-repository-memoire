@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +29,7 @@ public class ProjectDocumentService {
     private final HttpServletRequest request;
     private final IdentityClient  identityClient;
     private final NotificationService notificationService;
+    Logger logger = Logger.getLogger(getClass().getName());
 
     public ProjectDocument uploadDocument(Long projectId, MultipartFile file, DocumentType documentType) throws IOException {
 
@@ -73,7 +75,7 @@ public class ProjectDocumentService {
                         notificationService.notifierLivrablesEtCloture(emailCP, projet.getTitre(), "L'équipe technique");
                     }
                 } catch (Exception e) {
-                    System.err.println("Erreur envoi notification bascule de phase : " + e.getMessage());
+                    logger.info("Erreur envoi notification bascule de phase : " + e.getMessage());
                 }
             }
         }

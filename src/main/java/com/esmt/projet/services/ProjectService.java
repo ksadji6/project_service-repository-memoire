@@ -85,10 +85,10 @@ public class ProjectService {
         Project savedProject = projectRepository.save(project);
 
         try {
-            Map<String, Object> cpMap = identityClient.getUserById(request.getChefProjetId());
-            if (cpMap != null && cpMap.get("email") != null) {
-                String emailCP = cpMap.get("email").toString();
-                notificationService.notifierNouveauPreProjet(emailCP, savedProject.getTitre(), "L'équipe Presales");
+            Map<String, Object> presalesMap = identityClient.getUserById(request.getPresalesId());
+            if (presalesMap != null && presalesMap.get("email") != null) {
+                String emailPresales = presalesMap.get("email").toString();
+                notificationService.notifierNouveauPreProjet(emailPresales, savedProject.getTitre(), "L'équipe Technique");
             }
         } catch (Exception e) {
             System.err.println("Échec notification création pré-projet : " + e.getMessage());
@@ -269,7 +269,17 @@ public class ProjectService {
         // 4. Sauvegarde le projet mis à jour
         Project savedProject = projectRepository.save(projet);
 
-        // ... (ton code de notification reste identique) ...
+        try {
+            // Il faut récupérer l'email de l'ingénieur via ton client Identity
+            java.util.Map<String, Object> ingeMap = identityClient.getUserById(taskDTO.getIngenieurId());
+            if (ingeMap != null && ingeMap.get("email") != null) {
+                String emailIngenieur = ingeMap.get("email").toString();
+                notificationService.notifierAssignationTache(emailIngenieur, savedProject.getTitre(), task.getIntitule());
+            }
+        } catch (Exception e) {
+            // On logue l'erreur mais on ne bloque pas la création de la tâche
+            System.err.println("Erreur envoi notification assignation : " + e.getMessage());
+        }
 
         return mapToResponseDTO(savedProject);
     }
@@ -356,6 +366,17 @@ public class ProjectService {
         project.setStatut(ProjectStatus.TERMINE);
 
         Project updatedProject = projectRepository.save(project);
+
+        try {
+            java.util.Map<String, Object> cpMap = identityClient.getUserById(updatedProject.getChefProjetId());
+            if (cpMap != null && cpMap.get("email") != null) {
+                String emailCP = cpMap.get("email").toString();
+                // On notifie le Chef de Projet que tout est bouclé
+                notificationService.notifierLivrablesEtCloture(emailCP, updatedProject.getTitre(), "L'équipe technique");
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur envoi notification clôture projet : " + e.getMessage());
+        }
         return mapToResponseDTO(updatedProject);
     }
 

@@ -12,14 +12,13 @@ public class NotificationService {
     private final JavaMailSender mailSender;
 
     //phase= PRE_PROJET --> notif au chef projet quand le presales uload les documents
-    public void notifierNouveauPreProjet(String emailChefProjet, String titreProjet, String nomPresales) {
+    public void notifierNouveauPreProjet(String emailPresales, String titreProjet, String nomPresales) {
         SimpleMailMessage mailMessage = new SimpleMailMessage();
-        mailMessage.setTo(emailChefProjet);
+        mailMessage.setTo(emailPresales);
         mailMessage.setSubject(" Nouveau dossier Pré-projet à valider - CIS Integration");
         mailMessage.setText("Bonjour,\n\n" +
-                "L'ingénieur Presales (" + nomPresales + ") vient de charger les documents d'opportunité " +
-                "pour le projet suivant : \"" + titreProjet + "\".\n\n" +
-                "Le projet est actuellement en phase PRE_PROJET. Veuillez vérifier et valider les prérequis " +
+                "Un nouveau projet a été créé \"" + titreProjet + "\".\n\n" +
+                "Le projet est actuellement en phase PRE_PROJET. Veuillez ajouter les prérequis " +
                 "techniques pour lancer la phase d'exécution.\n\n" +
                 "Cordialement,\n" +
                 "Système de Notification CIS.");
